@@ -1,10 +1,129 @@
 package Thrift::API::HBaseClient2;
 
-use 5.006;
+use 5.10.0;
 use strict;
 use warnings FATAL => 'all';
 
 our $VERSION = '0.01';
+
+use Moo;
+use Carp;
+
+use Moo;
+
+use Thrift;
+use Thrift::Socket;
+use Thrift::BufferedTransport;
+
+use Thrift::API::HBaseClient2::THBaseService;
+
+has use_xs  => (
+    is      => 'rwp',
+    default => sub { 0 },
+    lazy    => 1,
+);
+
+has host => (
+    is      => 'ro',
+    default => sub {'localhost'},
+);
+has port    => (
+    is      => 'ro',
+    default => sub { 9090 },
+);
+
+has timeout => (
+    is      => 'rw',
+    default => sub { 3_600 },
+);
+
+
+has _socket => ( is => 'rwp' );
+has _transport => ( is => 'rwp' );
+has _protocol  => ( is => 'rwp' );
+has _client    => ( is => 'rwp' );
+
+sub _set_socket { $_[0]->{_socket} = $_[1] }
+sub _set_transport { $_[0]->{_transport} = $_[1] }
+sub _set_protocol  { $_[0]->{_protocol}  = $_[1] }
+sub _set_client { $_[0]->{_client}    = $_[1] }
+
+sub BUILD {
+    my $self = shift;
+
+    $self->_set_socket(
+            Thrift::Socket->new( $self->host, $self->port )
+        ) unless $self->_socket;
+
+    $self->_set_transport(
+            Thrift::BufferedTransport->new( $self->_socket )
+        ) unless $self->_transport;
+
+    $self->_set_protocol(
+            $self->_init_protocol( $self->_transport )
+        ) unless $self->_protocol;
+
+    $self->_set_client(
+            Thrift::API::HBaseClient2::THBaseServiceClient->new(
+                $self->_protocol
+            )
+        ) unless $self->_client;
+}
+
+sub _init_protocol {
+    my $self = shift;
+    my $err;
+
+    my $protocol = $self->use_xs and eval {
+        $self->use_xs
+            && require Thrift::XS::BinaryProtocol;
+        Thrift::XS::BinaryProtocol->new( $self->_transport );
+    } or do { $err = $@; 0 };
+
+    $protocol ||= do {
+            $self->_set_use_xs( 0 );
+            
+            require Thrift::BinaryProtocol;
+            Thrift::BinaryProtocol->new( $self->_transport );
+        };
+
+    return $protocol;
+}
+
+sub connect {
+    my ($self) = @_;
+    $self->_socket->setRecvTimeout($self->timeout * 1000);
+    $self->_transport->open;
+}
+
+sub list {
+    my $self = shift;
+
+    my $get = Thrift::API::HBaseClient2::TGet->new({row => '880723-88072301'});
+
+    my $res;
+    eval { $res = $self->_client->gets('b_roomhotel',$get); 1 } or do {
+        $res = $@;
+    };
+    print STDERR "Not here\n";
+
+    if ( $res->isa('TApplicationException') ) {
+        print STDERR "exception: ",$res->getMessage(),"\n";
+    } else {
+        use Data::Dumper;
+        print STDERR Dumper($res);
+    }
+}
+
+sub scan {
+    my $self = shift;
+
+#     my $scan = $self
+
+    my @res = $self->_client->getTableNames();
+
+    print STDERR Dumper(\@res);
+}
 
 1; # End of Thrift::API::HBaseClient2
 
@@ -39,32 +158,16 @@ if you don't export anything, such as for a purely object-oriented module.
 
 =head1 SUBROUTINES/METHODS
 
-=head2 function1
-
-=cut
-
-sub function1 {
-}
-
-=head2 function2
-
-=cut
-
-sub function2 {
-}
-
 =head1 AUTHOR
 
-Bosko Devetak, Marco Neves, C<< <neves at cpan.org,bdevetak@cpan.org> >>
+Bosko Devetak C<< bdevetak@cpan.org> >>
+Marco Neves C<< <neves at cpan.org >>
 
 =head1 BUGS
 
 Please report any bugs or feature requests to C<bug-thrift-api-hbaseclient2 at rt.cpan.org>, or through
 the web interface at L<http://rt.cpan.org/NoAuth/ReportBug.html?Queue=Thrift-API-HBaseClient2>.  I will be notified, and then you'll
 automatically be notified of progress on your bug as I make changes.
-
-
-
 
 =head1 SUPPORT
 
