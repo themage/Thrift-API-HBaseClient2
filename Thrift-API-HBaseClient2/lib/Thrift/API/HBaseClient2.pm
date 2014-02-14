@@ -4,6 +4,12 @@ use 5.006;
 use strict;
 use warnings FATAL => 'all';
 
+our $VERSION = '0.01';
+
+1; # End of Thrift::API::HBaseClient2
+
+__END__
+
 =head1 NAME
 
 Thrift::API::HBaseClient2 - The great new Thrift::API::HBaseClient2!
@@ -13,8 +19,6 @@ Thrift::API::HBaseClient2 - The great new Thrift::API::HBaseClient2!
 Version 0.01
 
 =cut
-
-our $VERSION = '0.01';
 
 
 =head1 SYNOPSIS
@@ -137,5 +141,3 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
 =cut
-
-1; # End of Thrift::API::HBaseClient2
